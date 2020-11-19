@@ -6,6 +6,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 	"github.com/mikelpsv/data-mapping-service/app"
+	"github.com/mikelpsv/data-mapping-service/models"
 	"log"
 	"net/http"
 	"os"
@@ -51,6 +52,72 @@ func main() {
 	if pFlagInstall {
 		app.Install(pFlagTestData)
 	}
+
+	/*
+		(&models.Mapping{
+			NamespaceId: 1,
+			KeyId:       2,
+			ValExt:      "eddrfsd",
+			ValInt:      "453",
+			Payload:     "",
+		}).Store()
+
+		(&models.Mapping{
+			NamespaceId: 1,
+			KeyId:       2,
+			ValExt:      "456",
+			ValInt:      "453",
+			Payload:     "",
+		}).Store()
+
+		(&models.Mapping{
+			NamespaceId: 1,
+			KeyId:       2,
+			ValExt:      "756",
+			ValInt:      "6",
+			Payload:     "",
+		}).Store()
+
+		(&models.Mapping{
+			NamespaceId: 1,
+			KeyId:       2,
+			ValExt:      "345",
+			ValInt:      "63",
+			Payload:     "",
+		}).Store()
+
+		(&models.Mapping{
+			NamespaceId: 1,
+			KeyId:       2,
+			ValExt:      "345",
+			ValInt:      "6",
+			Payload:     "",
+		}).Store()
+
+
+		(&models.Mapping{
+			NamespaceId: 1,
+			KeyId:       2,
+			ValExt:      "756",
+			ValInt:      "453",
+			Payload:     "",
+		}).Store()
+
+		(&models.Mapping{
+			NamespaceId: 1,
+			KeyId:       2,
+			ValExt:      "345",
+			ValInt:      "453",
+			Payload:     "",
+		}).Store()
+
+	*/
+
+	m := models.Mappings{}
+	m.GetByExtValue(1, 2, "345")
+
+	m = models.Mappings{}
+	m.GetByIntValue(1, 2, "453")
 
 	log.Fatal(http.ListenAndServe(Config.APP_ADDR+":"+Config.APP_PORT, router))
 }

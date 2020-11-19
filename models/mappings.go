@@ -57,12 +57,54 @@ func (m *Mapping) Delete() error {
 
 }
 
-func (m *Mappings) GetByExtValue(nsId int64, keyId int64, extVal string) {
-	_ = "SELECT _id, ns_id, key_id, val_ext, val_int, payload FROM mappings WHERE val_ext = $1"
+func (m *Mapping) Store() (*Mapping, error) {
+	if m.Id == 0 {
+		sql := "INSERT INTO mappings (ns_id, key_id, val_ext, val_int, payload) VALUES($1, $2, $3, $4, $5)"
+		_, err := app.Db.Exec(sql, m.NamespaceId, m.KeyId, m.ValExt, m.ValInt, m.Payload)
+		if err != nil {
+			return nil, err
+		}
+
+	}
+	return m, nil
 }
 
-func (m *Mappings) GetByIntValue(nsId int64, keyId int64, intVal string) {
-	_ = "SELECT _id, ns_id, key_id, val_ext, val_int, payload FROM mappings WHERE val_int = $1"
+func (m *Mappings) GetByExtValue(nsId int64, keyId int64, extVal string) (*Mappings, error) {
+	sql := "SELECT _id, ns_id, key_id, val_ext, val_int, payload FROM mappings WHERE ns_id = $1 AND key_id = $2 AND val_ext = $3"
+	rows, err := app.Db.Query(sql, nsId, keyId, extVal)
+	if err != nil {
+		return nil, err
+	}
+
+	*m = make(Mappings, 0, 5)
+	for rows.Next() {
+		mapRow := new(Mapping)
+		err = rows.Scan(&mapRow.Id, &mapRow.NamespaceId, &mapRow.KeyId, &mapRow.ValExt, &mapRow.ValInt, &mapRow.Payload)
+		if err != nil {
+			return nil, err
+		}
+		*m = append(*m, *mapRow)
+	}
+	return m, nil
+}
+
+func (m *Mappings) GetByIntValue(nsId int64, keyId int64, intVal string) (*Mappings, error) {
+	sql := "SELECT _id, ns_id, key_id, val_ext, val_int, payload FROM mappings WHERE ns_id = $1 AND key_id = $2 AND val_int = $3"
+	rows, err := app.Db.Query(sql, nsId, keyId, intVal)
+	if err != nil {
+		return nil, err
+	}
+
+	*m = make(Mappings, 0, 5)
+	for rows.Next() {
+		mapRow := new(Mapping)
+		err = rows.Scan(&mapRow.Id, &mapRow.NamespaceId, &mapRow.KeyId, &mapRow.ValExt, &mapRow.ValInt, &mapRow.Payload)
+		if err != nil {
+			return nil, err
+		}
+		*m = append(*m, *mapRow)
+	}
+	return m, nil
 }
 
 func (m *Mappings) CountRowsByNamespace(nsId int64) (count int64, err error) {
