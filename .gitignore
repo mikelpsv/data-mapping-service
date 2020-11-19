@@ -1,0 +1,7 @@
+vendor
+.idea
+.data
+.env
+!.env.sample
+data-mapping-service
+dump.sql
