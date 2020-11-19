@@ -12,8 +12,13 @@ import (
 )
 
 type AppCfg struct {
-	APP_ADDR string
-	APP_PORT string
+	APP_ADDR    string
+	APP_PORT    string
+	DB_HOST     string
+	DB_PORT     string
+	DB_NAME     string
+	DB_USER     string
+	DB_PASSWORD string
 }
 
 var Config AppCfg
@@ -31,14 +36,17 @@ func main() {
 	router := NewRouter(routeItems)
 
 	if pFlagInstall {
-		_, err := os.Stat(".data/authdata.db")
-		if err == nil {
-			log.Println("Data file is exist!")
-			os.Remove(".data/authdata.db")
-		}
+		/*
+			_, err := os.Stat(".data/authdata.db")
+			if err == nil {
+				log.Println("Data file is exist!")
+				os.Remove(".data/authdata.db")
+			}
+
+		*/
 	}
 
-	app.InitDb("", "", "", "")
+	app.InitDb(Config.DB_HOST, Config.DB_NAME, Config.DB_USER, Config.DB_PASSWORD)
 
 	if pFlagInstall {
 		app.Install(pFlagTestData)
@@ -55,6 +63,12 @@ func ReadEnv() {
 
 	Config.APP_ADDR = os.Getenv("APP_ADDR")
 	Config.APP_PORT = os.Getenv("APP_PORT")
+
+	Config.DB_HOST = os.Getenv("POSTGRES_HOST")
+	Config.DB_PORT = os.Getenv("POSTGRES_PORT")
+	Config.DB_NAME = os.Getenv("POSTGRES_DB")
+	Config.DB_USER = os.Getenv("POSTGRES_USER")
+	Config.DB_PASSWORD = os.Getenv("POSTGRES_PASSWORD")
 }
 
 func NewRouter(routeItems app.Routes) *mux.Router {
