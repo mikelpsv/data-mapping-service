@@ -12,6 +12,8 @@ type Key struct {
 }
 
 func (k *Key) FindById(keyId int64) (*Key, error) {
+	k.Clean()
+
 	sql := "SELECT _id, name FROM keys WHERE _id = $1"
 	rows, err := app.Db.Query(sql, keyId)
 	if err != nil {
@@ -86,5 +88,34 @@ func (k *Key) Store() (*Key, error) {
 		return nil, errors.New("Rows affected 0")
 	}
 
+	return k, nil
+}
+
+func (k *Key) Clean() {
+	k.Id = 0
+	k.Name = ""
+}
+
+/*
++
+*/
+func (k *Key) FindByName(keyName string) (*Key, error) {
+	k.Clean()
+
+	sql := "SELECT _id, name FROM keys WHERE name = $1"
+	rows, err := app.Db.Query(sql, keyName)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	if !rows.Next() {
+		return nil, errors.New("No records found matching the specified conditions")
+	}
+
+	err = rows.Scan(&k.Id, &k.Name)
+	if err != nil {
+		return nil, err
+	}
 	return k, nil
 }

@@ -30,6 +30,24 @@ func (n *Namespace) FindById(nsId int64) (*Namespace, error) {
 	return n, nil
 }
 
+func (n *Namespace) FindByName(nsName string) (*Namespace, error) {
+	sql := "SELECT _id, name FROM namespaces WHERE name = $1"
+	rows, err := app.Db.Query(sql, nsName)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	if !rows.Next() {
+		return nil, errors.New("No records found matching the specified conditions")
+	}
+
+	err = rows.Scan(&n.Id, &n.Name)
+	if err != nil {
+		return nil, err
+	}
+	return n, nil
+}
 func (n *Namespace) Delete() error {
 	if n.Id == 0 {
 		return errors.New("Row ID is empty")
@@ -83,4 +101,9 @@ func (n *Namespace) Store() (*Namespace, error) {
 	}
 
 	return n, nil
+}
+
+func (n *Namespace) Clean() {
+	n.Id = 0
+	n.Name = ""
 }

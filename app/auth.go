@@ -1,6 +1,8 @@
 package app
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	jwt "github.com/dgrijalva/jwt-go"
@@ -108,4 +110,10 @@ func ExtractToken(r *http.Request) string {
 		return strings.Split(bearerToken, " ")[1]
 	}
 	return ""
+}
+
+func GetMD5Hash(text string) string {
+	hasher := md5.New()
+	hasher.Write([]byte(text))
+	return hex.EncodeToString(hasher.Sum(nil))
 }

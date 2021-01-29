@@ -1,0 +1,283 @@
+openapi: 3.0.0
+info:
+  title: Сервис сопоставлений данных
+  description: API получения данных по связанным кодам
+  version: "1.0"
+servers:
+  - url: http://localhost:8989
+    description: stage (test)
+tags:
+- name: "Implemented"
+- name: "Not Implemented"
+
+paths:
+  /api/v3/map/{id_external}:
+    get:
+      summary: Возвращает связанное значение по внешнему коду
+      parameters:
+        - name: namespace
+          in: query
+          required: true
+          description: Область данных
+          schema:
+            type: string
+        - name: key
+          in: query
+          required: true
+          description: Вид данных
+          schema:
+            type: string
+        - name: id_external
+          in: path
+          required: true
+          description: Внешний ID
+          schema:
+            type: string
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  encoding:
+                    $ref: "#/components/schemas/encoding"
+        404:
+          description: not found
+          content:
+            application/json:
+              examples:
+                notfound:
+                  value: 'not found'
+    delete:
+      summary: Помечает связку удалённой
+      parameters:
+        - name: namespace
+          in: query
+          required: true
+          description: Область данных
+          schema:
+            type: string
+        - name: key
+          in: query
+          required: true
+          description: Вид данных
+          schema:
+            type: string
+        - name: id_external
+          in: path
+          required: true
+          description: Внешний ID
+          schema:
+            type: string
+      responses:
+        200:
+          description: Deleted
+        404:
+          description: namespace/key/encoding not found
+          content:
+            application/json:
+              examples:
+                notfound:
+                  value: 'not found'
+  /api/v3/map/{namespace}/{key}:
+    get:
+      summary: Возвращает массив связанных значений по массиву ID
+      parameters:
+        - name: namespace
+          in: path
+          required: true
+          description: Область данных
+          schema:
+            type: string
+        - name: key
+          in: path
+          required: true
+          description: Вид данных
+          schema:
+            type: string
+        - name: id_external
+          in: query
+          required: true
+          description: массив ID на стороне партнёра
+          schema:
+            type: array
+            items:
+              type: string
+          example: ['000123', '123000', '123321']
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListMappings"
+
+        404:
+          description: namespace/key not found
+          content:
+            application/json:
+              examples:
+                notfound:
+                  value: 'not found'
+    post:
+      summary: Сохраняет связку
+      parameters:
+        - name: namespace
+          in: path
+          required: true
+          description: Область данных
+          schema:
+            type: string
+        - name: key
+          in: path
+          required: true
+          description: Вид данных
+          schema:
+            type: string
+      
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ListMappings" 
+                
+      responses:
+        200:
+          description: Updated
+        201:
+          description: Created
+  /api/v3/list/:
+    get:
+      tags:
+        - "Implemented"
+      summary: Возвращает массив значений в зависимости от переданных аргументов
+      parameters:
+        - name: namespace
+          in: query
+          required: false
+          description: Область данных (при отсутствии возвращается список всех связок без учета namespace)
+          schema:
+            type: string
+        - name: key
+          in: query
+          required: false
+          description: Вид данных (при отсутствии возвращается список всех связок без учета key)
+          schema:
+            type: string
+        - name: val_ext
+          in: query
+          required: false
+          description: Внешний код (id_external)
+          schema:
+            type: string
+        - name: val_int
+          in: query
+          required: false
+          description: Внутренний код (id_internal)
+          schema:
+            type: string
+        - name: rel
+          in: query
+          required: false
+          description: условие связанности (1 - вернуть только связанные, 0 - только несвязанные, 2, 3 - зарервироывано)
+          schema:
+            type: integer
+          
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListMappings" 
+        404:
+          description: namespace/key not found
+          content:
+            application/json:
+              examples:
+                notfound:
+                  value: 'not found'
+components:
+  schemas:
+    ListMappings:
+      type: object
+      properties:
+        mappings:
+          type: array
+          items:
+            $ref: "#/components/schemas/Map"
+  
+    ListNamespace:
+      type: object
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+        namespace_list:
+          type: array
+          example: ['Ecommerce', 'Созвездие']
+          items:
+            type: string
+    ListKey:
+      type: object
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+        namespace:
+          type: string
+          example: 'Ecommerce'
+        key_list:
+          type: array
+          items:
+            type: string
+            example: ['АСНА', 'KEY2']
+
+    Map:
+      type: object
+      description: Связка
+      
+      properties:
+        val_ext:
+          title: Внешний ID
+          type: string
+          example: '000123'
+        val_int:
+          title: Внутренний ID
+          type: string
+          example: '321'
+        payload:
+          title: Доп. информация
+          type: string
+          example: "{'inn': '12345'}"
+          
+
+    encodingCreate:
+      type: object
+      properties:
+        namespace:
+          description: Область данных
+          type: string
+        key:
+          type: string
+          description: Вид данных
+        id_external:
+          title: Внешний ID
+          type: string
+          example: '000123'
+        id_internal:
+          title: Внутренний ID
+          type: string
+          example: '321'
+        comment:
+          title: Комментарий
+          type: string
+          example: 'МСК'

@@ -2,14 +2,16 @@ package app
 
 import (
 	"net/http"
+	"net/http/httptest"
 	"testing"
 )
 
 func TestGetSimpleValue(t *testing.T) {
-	request, _ := http.NewRequest(
+	request := httptest.NewRequest(
 		"GET",
 		"http://localhost:8989?test_param=93",
 		nil)
+
 	val, exist := GetSimpleValue(request, "test_param")
 	if !exist {
 		t.Error(!exist, "param `test_param` not found")
@@ -21,7 +23,7 @@ func TestGetSimpleValue(t *testing.T) {
 }
 
 func TestGetSimpleValueAsInt(t *testing.T) {
-	request, _ := http.NewRequest(
+	request := httptest.NewRequest(
 		"GET",
 		"http://localhost:8989?test_param=93",
 		nil)
