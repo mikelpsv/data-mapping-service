@@ -9,6 +9,7 @@ servers:
 tags:
 - name: "Implemented"
 - name: "Not Implemented"
+- name: "Implemented. Deprecated"
 
 paths:
   /api/v3/map/{id_external}:
@@ -17,7 +18,7 @@ paths:
       parameters:
         - name: namespace
           in: query
-          required: true
+          required: true 
           description: Область данных
           schema:
             type: string
@@ -42,7 +43,7 @@ paths:
                 type: object
                 properties:
                   encoding:
-                    $ref: "#/components/schemas/encoding"
+                    $ref: "#/components/schemas/ListMappings"
         404:
           description: not found
           content:
@@ -83,7 +84,7 @@ paths:
                   value: 'not found'
   /api/v3/map/{namespace}/{key}:
     get:
-      summary: Возвращает массив связанных значений по массиву ID
+      summary: Возвращает массив значений в зависимости от переданных аргументов
       parameters:
         - name: namespace
           in: path
@@ -91,21 +92,35 @@ paths:
           description: Область данных
           schema:
             type: string
+            
         - name: key
           in: path
           required: true
           description: Вид данных
           schema:
             type: string
-        - name: id_external
+            
+        - name: val_int
           in: query
           required: true
-          description: массив ID на стороне партнёра
+          description: Внутренний код (id_internal)
           schema:
-            type: array
-            items:
-              type: string
-          example: ['000123', '123000', '123321']
+            type: string
+            
+        - name: val_ext
+          in: query
+          required: true
+          description: Внешний код (id_external)
+          schema:
+            type: string
+            
+        - name: rel
+          in: query
+          required: false
+          description: условие связанности (1 - вернуть только связанные, 0 - только несвязанные, 2, 3 - зарервироывано)
+          schema:
+            type: integer
+            
       responses:
         200:
           description: OK
@@ -151,19 +166,19 @@ paths:
   /api/v3/list/:
     get:
       tags:
-        - "Implemented"
-      summary: Возвращает массив значений в зависимости от переданных аргументов
+        - "Implemented. Deprecated"
+      summary: Возвращает массив значений в зависимости от переданных аргументов (старый синтаксис)
       parameters:
         - name: namespace
           in: query
           required: false
-          description: Область данных (при отсутствии возвращается список всех связок без учета namespace)
+          description: Область данных (обязательное)
           schema:
             type: string
         - name: key
           in: query
           required: false
-          description: Вид данных (при отсутствии возвращается список всех связок без учета key)
+          description: Вид данных (обязательное)
           schema:
             type: string
         - name: val_ext
@@ -184,7 +199,6 @@ paths:
           description: условие связанности (1 - вернуть только связанные, 0 - только несвязанные, 2, 3 - зарервироывано)
           schema:
             type: integer
-          
       responses:
         200:
           description: OK
@@ -220,7 +234,7 @@ components:
           type: integer
         namespace_list:
           type: array
-          example: ['Ecommerce', 'Созвездие']
+          example: ['namespace1', 'namespace2']
           items:
             type: string
     ListKey:
@@ -234,12 +248,11 @@ components:
           type: integer
         namespace:
           type: string
-          example: 'Ecommerce'
         key_list:
           type: array
           items:
             type: string
-            example: ['АСНА', 'KEY2']
+            example: ['key1', 'key2']
 
     Map:
       type: object
@@ -280,4 +293,4 @@ components:
         comment:
           title: Комментарий
           type: string
-          example: 'МСК'
+

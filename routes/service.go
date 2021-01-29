@@ -21,6 +21,14 @@ func RegisterServiceHandlers(routeItems app.Routes) app.Routes {
 		HandlerFunc:   ListMappings,
 	})
 	routeItems = append(routeItems, app.Route{
+		Name:          "ListNewSintax",
+		Method:        "GET",
+		Pattern:       "/map/{nsName}/{keyName}",
+		SetHeaderJSON: true,
+		ValidateToken: false,
+		HandlerFunc:   ListMappingsNewSintax,
+	})
+	routeItems = append(routeItems, app.Route{
 		Name:          "StoreMap",
 		Method:        "POST",
 		Pattern:       "/map/{nsName}/{keyName}",
@@ -57,7 +65,6 @@ func ListMappings(w http.ResponseWriter, r *http.Request) {
 	if valInt = keys.Get("val_int"); valInt == "" {
 		valInt = keys.Get("id_internal") // old syntax
 	}
-	// vars["page"] vars["limit"] - old syntax. не реализовано
 
 	ns := new(models.Namespace)
 	_, err := ns.FindByName(valNs)
@@ -81,13 +88,73 @@ func ListMappings(w http.ResponseWriter, r *http.Request) {
 	response := new(models.MappingsResponse)
 	response.Mappings = mappings
 
-	//for _, mapItem := range mappings{
-	//	response.Mappings = append(response.Mappings, mapItem)
-	//}
 	app.ResponseJSON(w, http.StatusOK, response)
 	return
 
 }
+func ListMappingsNewSintax(w http.ResponseWriter, r *http.Request) {
+	var valNs, valKey string
+	var exist bool
+	var valExt, valInt string
+	var rel int
+
+
+	vars := mux.Vars(r)
+
+	if valNs, exist = vars["nsName"]; !exist {
+		app.ResponseERROR(w, http.StatusBadRequest, errors.New("namespace parameter required"))
+		return
+	}
+	if valKey, exist = vars["keyName"]; !exist {
+		app.ResponseERROR(w, http.StatusBadRequest, errors.New("key parameter required"))
+		return
+	}
+
+	keys := r.URL.Query()
+	// только связанные
+	valRelated := keys.Get("rel")
+	if valRelated == "1" {
+		rel = 1
+	} else if valRelated == "0" {
+		rel = 0
+	} else {
+		rel = -1
+	}
+
+	if valExt = keys.Get("val_ext"); valExt == "" {
+		valExt = keys.Get("id_external") // old syntax
+	}
+	if valInt = keys.Get("val_int"); valInt == "" {
+		valInt = keys.Get("id_internal") // old syntax
+	}
+
+	ns := new(models.Namespace)
+	_, err := ns.FindByName(valNs)
+	if valNs != "" && err != nil {
+		app.ResponseERROR(w,
+			http.StatusNotFound,
+			errors.New(fmt.Sprintf("Namespace %s not found", valNs)))
+	}
+
+	key := new(models.Key)
+	_, err = key.FindByName(valKey)
+	if valKey != "" && err != nil {
+		app.ResponseERROR(w,
+			http.StatusNotFound,
+			errors.New(fmt.Sprintf("key %s not found", valKey)))
+	}
+
+	mappings := models.Mappings{}
+	mappings.ListMappings(ns, key, valInt, valExt, rel)
+
+	response := new(models.MappingsResponse)
+	response.Mappings = mappings
+
+	app.ResponseJSON(w, http.StatusOK, response)
+	return
+
+}
+
 
 func StoreMapping(w http.ResponseWriter, r *http.Request) {
 	/*
