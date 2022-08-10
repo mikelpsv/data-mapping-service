@@ -9,9 +9,42 @@ import (
 	"github.com/mikelpsv/data-mapping-service/models"
 	"io/ioutil"
 	"net/http"
+	"strconv"
 )
 
 func RegisterServiceHandlers(routeItems app.Routes) app.Routes {
+	routeItems = append(routeItems, app.Route{
+		Name:          "GetNamespaces",
+		Method:        "GET",
+		Pattern:       "/namespaces",
+		SetHeaderJSON: true,
+		ValidateToken: false,
+		HandlerFunc:   GetNamespaces,
+	})
+	routeItems = append(routeItems, app.Route{
+		Name:          "CreateNamespace",
+		Method:        "POST",
+		Pattern:       "/namespaces/{nsName}",
+		SetHeaderJSON: true,
+		ValidateToken: false,
+		HandlerFunc:   CreateNamespace,
+	})
+	routeItems = append(routeItems, app.Route{
+		Name:          "GetKeys",
+		Method:        "GET",
+		Pattern:       "/namespaces/{nsName}/keys",
+		SetHeaderJSON: true,
+		ValidateToken: false,
+		HandlerFunc:   GetKeys,
+	})
+	routeItems = append(routeItems, app.Route{
+		Name:          "CreateKey",
+		Method:        "POST",
+		Pattern:       "/namespaces/{nsName}/keys/{keyName}",
+		SetHeaderJSON: true,
+		ValidateToken: false,
+		HandlerFunc:   CreateKey,
+	})
 	routeItems = append(routeItems, app.Route{
 		Name:          "List",
 		Method:        "GET",
@@ -37,6 +70,121 @@ func RegisterServiceHandlers(routeItems app.Routes) app.Routes {
 		HandlerFunc:   StoreMapping,
 	})
 	return routeItems
+}
+
+func GetNamespaces(w http.ResponseWriter, r *http.Request) {
+	ns := new(models.Namespace)
+	nsList, err := ns.Get()
+	if err != nil {
+		app.ResponseERROR(w, http.StatusInternalServerError, err)
+		return
+	}
+	app.ResponseJSON(w, http.StatusOK, nsList)
+}
+
+func CreateNamespace(w http.ResponseWriter, r *http.Request) {
+	var valNs string
+	var exist bool
+
+	vars := mux.Vars(r)
+	if valNs, exist = vars["nsName"]; !exist {
+		app.ResponseERROR(w, http.StatusBadRequest, errors.New("namespace parameter required"))
+		return
+	}
+	ns := new(models.Namespace)
+	ns.Name = valNs
+	ns, err := ns.Store()
+	if err != nil {
+		app.ResponseERROR(w, http.StatusInternalServerError, err)
+		return
+	}
+	app.ResponseJSON(w, http.StatusOK, ns)
+}
+
+func GetKeys(w http.ResponseWriter, r *http.Request) {
+	var valNs string
+	var exist bool
+	var err error
+
+	vars := mux.Vars(r)
+	if valNs, exist = vars["nsName"]; !exist {
+		app.ResponseERROR(w, http.StatusBadRequest, errors.New("namespace parameter required"))
+		return
+	}
+
+	nsItem := new(models.Namespace)
+	if _, ok := r.Header["Request-By-Name"]; ok {
+		nsItem, err = nsItem.FindByName(valNs)
+		if err != nil {
+			app.ResponseERROR(w, http.StatusNotFound, err)
+			return
+		}
+	} else {
+		i, err := strconv.Atoi(valNs)
+		if err != nil {
+			app.ResponseERROR(w, http.StatusBadRequest, errors.New("namespace parameter failed"))
+			return
+		}
+		nsItem, err = nsItem.FindById(int64(i))
+		if err != nil {
+			app.ResponseERROR(w, http.StatusNotFound, err)
+			return
+		}
+	}
+
+	keys, err := nsItem.GetKeys()
+	if err != nil {
+		app.ResponseERROR(w, http.StatusInternalServerError, err)
+	}
+	app.ResponseJSON(w, http.StatusOK, keys)
+}
+
+func CreateKey(w http.ResponseWriter, r *http.Request) {
+	var valNs string
+	var exist bool
+	var err error
+
+	vars := mux.Vars(r)
+	if valNs, exist = vars["nsName"]; !exist {
+		app.ResponseERROR(w, http.StatusBadRequest, errors.New("namespace parameter required"))
+		return
+	}
+	if vars["keyName"] == "" {
+		app.ResponseERROR(w, http.StatusBadRequest, errors.New("keyname parameter required"))
+		return
+	}
+
+	nsItem := new(models.Namespace)
+	if _, ok := r.Header["Request-By-Name"]; ok {
+		nsItem, err = nsItem.FindByName(valNs)
+		if err != nil {
+			app.ResponseERROR(w, http.StatusNotFound, err)
+			return
+		}
+	} else {
+		i, err := strconv.Atoi(valNs)
+		if err != nil {
+			app.ResponseERROR(w, http.StatusBadRequest, errors.New("namespace parameter failed"))
+			return
+		}
+		nsItem, err = nsItem.FindById(int64(i))
+		if err != nil {
+			app.ResponseERROR(w, http.StatusNotFound, err)
+			return
+		}
+	}
+
+	isExist := nsItem.KeyExists(vars["keyName"])
+	if isExist {
+		app.ResponseERROR(w, http.StatusBadRequest, fmt.Errorf("key exists"))
+		return
+	}
+
+	key, err := nsItem.CreateKey(vars["keyName"])
+	if err != nil {
+		app.ResponseERROR(w, http.StatusInternalServerError, err)
+	}
+	app.ResponseJSON(w, http.StatusOK, key)
 }
 
 func ListMappings(w http.ResponseWriter, r *http.Request) {
@@ -98,7 +246,6 @@ func ListMappingsNewSintax(w http.ResponseWriter, r *http.Request) {
 	var valExt, valInt string
 	var rel int
 
-
 	vars := mux.Vars(r)
 
 	if valNs, exist = vars["nsName"]; !exist {
@@ -154,7 +301,6 @@ func ListMappingsNewSintax(w http.ResponseWriter, r *http.Request) {
 	return
 
 }
-
 
 func StoreMapping(w http.ResponseWriter, r *http.Request) {
 	/*

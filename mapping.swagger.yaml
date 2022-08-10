@@ -7,11 +7,120 @@ servers:
   - url: http://localhost:8989
     description: stage (test)
 tags:
-- name: "Implemented"
-- name: "Not Implemented"
+- name: "Области данных"
+- name: "Ключи"
 - name: "Implemented. Deprecated"
 
 paths:
+  /api/v3/namespaces:
+    get:
+      tags:
+        - "Области данных"
+      summary: возвращает список областей данных
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    id:
+                      type: integer
+                      description: идентификатор ключа
+                    name:
+                      type: string
+                      description: наименование ключа 
+  /api/v3/namespaces/{namespace}:
+    post:
+      tags:
+        - "Области данных"
+      summary: создает область данных
+      parameters:
+        - name: namespace
+          in: path
+          required: true
+          description: Область данных
+          schema:
+            type: string
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Namespace"           
+  
+  /api/v3/namespaces/{namespace}/keys:
+    get:
+      tags:
+        - "Ключи"
+      summary: возвращает список ключей для области данных
+      
+      parameters:
+        - name: namespace
+          in: path
+          required: true
+          description: Область данных
+          schema:
+            type: string
+
+        - name: Request-By-Name
+          in: header
+          description: Использовать имена ключей и областей вместо идентификаторов
+          schema:
+            type: string      
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    id: 
+                      type: integer
+                      description: идентификатор ключа
+                    name: 
+                      type: string
+                      description: наименование ключа   
+  
+  /api/v3/namespaces/{namespace}/keys/{keyname}:
+    post:
+      tags:
+        - "Ключи"
+      summary: создает ключ в области данных
+      
+      parameters:
+        - name: namespace
+          in: path
+          required: true
+          description: область данных (*Reques-By-Name)
+          schema:
+            type: string
+
+        - name: keyname
+          in: path
+          required: true
+          description: имя создаваемого ключа
+          schema:
+            type: string            
+
+        - name: Request-By-Name
+          in: header
+          description: Использовать имена ключей и областей вместо идентификаторов
+          schema:
+            type: string      
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Key"               
+  
   /api/v3/map/{id_external}:
     get:
       summary: Возвращает связанное значение по внешнему коду
@@ -82,6 +191,7 @@ paths:
               examples:
                 notfound:
                   value: 'not found'
+  
   /api/v3/map/{namespace}/{key}:
     get:
       summary: Возвращает массив значений в зависимости от переданных аргументов
@@ -271,6 +381,29 @@ components:
           title: Доп. информация
           type: string
           example: "{'inn': '12345'}"
+          
+    Namespace:
+      type: object
+      description: Область данных
+      properties:
+        id:
+          title: идентификатор области данных
+          type: integer
+          example: 123
+        name:
+          title: наименование области данных
+          type: string
+          example: '321'
+          
+    Key:
+      type: object
+      properties:
+        id: 
+          type: integer
+          description: идентификатор ключа
+        name: 
+          type: string
+          description: наименование ключа                         
           
 
     encodingCreate:

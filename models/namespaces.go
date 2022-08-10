@@ -1,8 +1,8 @@
 package models
 
 import (
-	"database/sql"
 	"errors"
+	"fmt"
 	"github.com/mikelpsv/data-mapping-service/app"
 )
 
@@ -11,8 +11,28 @@ type Namespace struct {
 	Name string `json:"name"`
 }
 
+func (n *Namespace) Get() ([]Namespace, error) {
+	retVal := make([]Namespace, 0)
+	sqlGet := "SELECT id, name FROM namespaces"
+	rows, err := app.Db.Query(sqlGet)
+	if err != nil {
+		return retVal, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		ns := Namespace{}
+		err := rows.Scan(&ns.Id, &ns.Name)
+		if err != nil {
+			return retVal, err
+		}
+		retVal = append(retVal, ns)
+	}
+	return retVal, nil
+}
+
 func (n *Namespace) FindById(nsId int64) (*Namespace, error) {
-	sql := "SELECT _id, name FROM namespaces WHERE _id = $1"
+	sql := "SELECT id, name FROM namespaces WHERE id = $1"
 	rows, err := app.Db.Query(sql, nsId)
 	if err != nil {
 		return nil, err
@@ -20,7 +40,7 @@ func (n *Namespace) FindById(nsId int64) (*Namespace, error) {
 	defer rows.Close()
 
 	if !rows.Next() {
-		return nil, errors.New("No records found matching the specified conditions")
+		return nil, errors.New("no records found")
 	}
 
 	err = rows.Scan(&n.Id, &n.Name)
@@ -31,7 +51,7 @@ func (n *Namespace) FindById(nsId int64) (*Namespace, error) {
 }
 
 func (n *Namespace) FindByName(nsName string) (*Namespace, error) {
-	sql := "SELECT _id, name FROM namespaces WHERE name = $1"
+	sql := "SELECT id, name FROM namespaces WHERE name = $1"
 	rows, err := app.Db.Query(sql, nsName)
 	if err != nil {
 		return nil, err
@@ -39,7 +59,7 @@ func (n *Namespace) FindByName(nsName string) (*Namespace, error) {
 	defer rows.Close()
 
 	if !rows.Next() {
-		return nil, errors.New("No records found matching the specified conditions")
+		return nil, errors.New("no records found")
 	}
 
 	err = rows.Scan(&n.Id, &n.Name)
@@ -61,7 +81,7 @@ func (n *Namespace) Delete() error {
 		return errors.New("Namespace is used")
 	}
 
-	sql := "DELETE FROM namespaces WHERE _id = $1"
+	sql := "DELETE FROM namespaces WHERE id = $1"
 	res, err := app.Db.Exec(sql, n.Id)
 	if err != nil {
 		return err
@@ -78,26 +98,27 @@ func (n *Namespace) Delete() error {
 
 func (n *Namespace) Store() (*Namespace, error) {
 	var err error
-	var res sql.Result
 
 	if n.Id == 0 {
-		sql := "INSERT INTO namespaces (name) VALUES($1)"
-		res, err = app.Db.Exec(sql, n.Name)
+		sqlIns := "INSERT INTO namespaces (name) VALUES($1) RETURNING id"
+		err = app.Db.QueryRow(sqlIns, n.Name).Scan(&n.Id)
+		if err != nil {
+			return nil, err
+		}
 	} else {
-		sql := "UPDATE namespaces SET name = $1 WHERE _id = $2"
-		res, err = app.Db.Exec(sql, n.Name, n.Id)
-	}
+		sqlUpd := "UPDATE namespaces SET name = $1 WHERE id = $2"
+		res, err := app.Db.Exec(sqlUpd, n.Name, n.Id)
+		if err != nil {
+			return nil, err
+		}
 
-	if err != nil {
-		return nil, err
-	}
-
-	aff, err := res.RowsAffected()
-	if err != nil {
-		return nil, err
-	}
-	if aff != 1 {
-		return nil, errors.New("Rows affected 0")
+		aff, err := res.RowsAffected()
+		if err != nil {
+			return nil, err
+		}
+		if aff != 1 {
+			return nil, fmt.Errorf("rows affected %d", aff)
+		}
 	}
 
 	return n, nil
@@ -106,4 +127,43 @@ func (n *Namespace) Store() (*Namespace, error) {
 func (n *Namespace) Clean() {
 	n.Id = 0
 	n.Name = ""
+}
+
+// GetKeys возвращает список ключей в текущем namespace
+func (n *Namespace) GetKeys() ([]Key, error) {
+	retVal := make([]Key, 0)
+
+	sqlS := "SELECT id, name, ns_id FROM keys WHERE ns_id = $1"
+	rows, err := app.Db.Query(sqlS, n.Id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		k := Key{}
+		err = rows.Scan(&k.Id, &k.Name, &k.NsId)
+		if err != nil {
+			return nil, err
+		}
+		retVal = append(retVal, k)
+	}
+
+	return retVal, nil
+}
+
+// CreateKey создает ключ по имени в текущем namespace
+func (n *Namespace) CreateKey(keyName string) (*Key, error) {
+	k := new(Key)
+	k.Name = keyName
+	k.NsId = n.Id
+	return k.Store()
+}
+
+func (n *Namespace) KeyExists(keyName string) bool {
+	var count int
+	sql := "SELECT COUNT(*) AS count FROM keys WHERE name = $1 AND ns_id = $2"
+	row := app.Db.QueryRow(sql, keyName, n.Id)
+	_ = row.Scan(&count)
+	return count > 0
 }

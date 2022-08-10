@@ -3,18 +3,20 @@ package models
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"github.com/mikelpsv/data-mapping-service/app"
 )
 
 type Key struct {
 	Id   int64  `json:"id"`
 	Name string `json:"name"`
+	NsId int64  `json:"-"`
 }
 
 func (k *Key) FindById(keyId int64) (*Key, error) {
 	k.Clean()
 
-	sql := "SELECT _id, name FROM keys WHERE _id = $1"
+	sql := "SELECT id, name FROM keys WHERE id = $1"
 	rows, err := app.Db.Query(sql, keyId)
 	if err != nil {
 		return nil, err
@@ -48,7 +50,7 @@ func (k *Key) Delete() error {
 		return errors.New("Key is used")
 	}
 
-	sql := "DELETE FROM keys WHERE _id = $1"
+	sql := "DELETE FROM keys WHERE id = $1"
 	res, err := app.Db.Exec(sql, k.Id)
 	if err != nil {
 		return err
@@ -69,25 +71,25 @@ func (k *Key) Store() (*Key, error) {
 	var res sql.Result
 
 	if k.Id == 0 {
-		sql := "INSERT INTO keys (name) VALUES($1)"
-		res, err = app.Db.Exec(sql, k.Name)
+		sqlIns := "INSERT INTO keys (name, ns_id) VALUES($1, $2) RETURNING id"
+		err = app.Db.QueryRow(sqlIns, k.Name, k.NsId).Scan(&k.Id)
+		if err != nil {
+			return nil, err
+		}
 	} else {
-		sql := "UPDATE keys SET name = $1 WHERE _id = $2"
-		res, err = app.Db.Exec(sql, k.Name, k.Id)
+		sqlUpd := "UPDATE keys SET name = $1, ns_id = $2 WHERE id = $2"
+		res, err = app.Db.Exec(sqlUpd, k.Name, k.Id, k.NsId)
+		if err != nil {
+			return nil, err
+		}
+		aff, err := res.RowsAffected()
+		if err != nil {
+			return nil, err
+		}
+		if aff != 1 {
+			return nil, fmt.Errorf("rows affected %d", aff)
+		}
 	}
-
-	if err != nil {
-		return nil, err
-	}
-
-	aff, err := res.RowsAffected()
-	if err != nil {
-		return nil, err
-	}
-	if aff != 1 {
-		return nil, errors.New("Rows affected 0")
-	}
-
 	return k, nil
 }
 
@@ -96,13 +98,10 @@ func (k *Key) Clean() {
 	k.Name = ""
 }
 
-/*
-+
-*/
 func (k *Key) FindByName(keyName string) (*Key, error) {
 	k.Clean()
 
-	sql := "SELECT _id, name FROM keys WHERE name = $1"
+	sql := "SELECT id, name, ns_id FROM keys WHERE name = $1"
 	rows, err := app.Db.Query(sql, keyName)
 	if err != nil {
 		return nil, err
@@ -110,10 +109,10 @@ func (k *Key) FindByName(keyName string) (*Key, error) {
 	defer rows.Close()
 
 	if !rows.Next() {
-		return nil, errors.New("No records found matching the specified conditions")
+		return nil, errors.New("no records found")
 	}
 
-	err = rows.Scan(&k.Id, &k.Name)
+	err = rows.Scan(&k.Id, &k.Name, &k.NsId)
 	if err != nil {
 		return nil, err
 	}
